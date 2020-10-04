@@ -30,20 +30,24 @@ extract_information = ["file name", "Model", "Data Path", "#entity", "#relation"
 
 special_information = ["MRR", "MR", "HITS@1", "HITS@3", "HITS@10"]
 
+output_modes = ["symmetric", "inverse", "implication"]
+
 dirname = os.path.dirname(__file__)
-dataset = "wn18rr"
-relPathToLogs = "../Results/raw_results/hpc/" + dataset + "-new-grid-shayan"
+dataset = "fb15k"
+relPathToLogs = "../Results/raw_results/hpc/" + dataset + "-new-grid" + "/models/RotatE/rotate"
 
 # pathToLogs = os.path.join(dirname, relPathToLogs, '*.log')
 
-pathToExcel = os.path.join(dirname, "results-new-grid-" + dataset + "-shayan.xlsx")
+relPathToExcel = os.path.join(dirname, "results-" + dataset + "-")
+# pathToExcel = os.path.join(dirname, "results-new-grid-" + dataset + "-shayan.xlsx")
 
 
-def saveResultAsExcel(dataFrame):
-    dataFrame.to_excel(pathToExcel, index=False)
+def saveResultAsExcel(dataFrame,outputMode):
+    exactPathToExcel = os.path.join(relPathToExcel + outputMode + ".xlsx")
+    dataFrame.to_excel(exactPathToExcel, index=False)
 
 
-def appendRow(keyValue):
+def appendRow(keyValue, outputMode):
     completeRow = dict.fromkeys(extract_information)
     for key in completeRow:
         if key in keyValue.keys():
@@ -51,8 +55,9 @@ def appendRow(keyValue):
         else:
             completeRow[key] = ""
 
-    newRow = pd.DataFrame([completeRow.values()], columns=completeRow.keys())
-    currentSheet = pd.read_excel(pathToExcel, sheet_name=0)
+    newRow = pd.DataFrame([completeRow.values()], columns = completeRow.keys())
+    exactPathToExcel = os.path.join(relPathToExcel + outputMode + ".xlsx")
+    currentSheet = pd.read_excel(exactPathToExcel, sheet_name=0)
     updatedSheet = currentSheet.append(newRow, ignore_index=True)
     return updatedSheet
 
@@ -62,6 +67,7 @@ def updateExcelFile(filename):
     with open(os.path.join(filename), 'r') as logFile:
         keyValue = {"file name": os.path.basename(logFile.name)}
         logFile = logFile.readlines()
+        outputMode = mark_output(logFile)
         skip_second_gamma = False
         for line in logFile:
             for phrase in extract_information:
@@ -74,7 +80,7 @@ def updateExcelFile(filename):
                         if value is not None:
                             keyValue[phrase] = value.group()[2:]
                     else:
-                        # REMOVE NEXT LINE  IF WHEN YOU GET RID OF SECOND GAMMA IN LOGS
+                        # REMOVE NEXT LINE  WHENEVER YOU GET RID OF SECOND GAMMA IN LOGS
                         if phrase == 'gamma' and skip_second_gamma is False:
                             skip_second_gamma = True
                             value = re.search(rf"{phrase}: ?.*", line)
@@ -83,8 +89,8 @@ def updateExcelFile(filename):
                         if value is not None:
                             keyValue[phrase] = value.group()[phrase.__len__() + 2:]
 
-    updatedDataFreame = appendRow(keyValue)
-    saveResultAsExcel(updatedDataFreame)
+    updatedDataFreame = appendRow(keyValue, outputMode)
+    saveResultAsExcel(updatedDataFreame, outputMode)
 
 
 def check_for_results(filename):
@@ -97,6 +103,15 @@ def check_for_results(filename):
                         if phrase == 'HITS@1' and "HITS@10" in line:
                             return True
         return False
+
+
+def mark_output(logFile):
+    for line in logFile:
+        for phrase in output_modes:
+            if phrase in line:
+                return phrase
+    return 'default'
+
 
 
 # remove duplicate log files
@@ -118,23 +133,28 @@ for root, dirs, files in os.walk(relPathToLogs):
             if log_with_results != "":
                 for logFile in os.listdir(root):
                     logFilePath = os.path.join(root, logFile)
-                    if logFile.endswith(".log") and os.path.basename(logFilePath) != log_with_results:
+                    if logFile.endswith(".log") and \
+                            os.path.basename(logFilePath) != log_with_results and not \
+                            check_for_results(logFilePath):
                         os.remove(logFilePath)
 
             #  keep the largest log file if no log file were found with results
             else:
                 for logFile in os.listdir(root):
+                    logFilePath = os.path.join(root, logFile)
                     #  find the largest file
-                    if logFile.endswith(".log") and os.stat(os.path.join(root, logFile)).st_size > max_size:
-                        max_size = os.stat(os.path.join(root, logFile)).st_size
+                    if logFile.endswith(".log") and os.stat(logFilePath).st_size > max_size:
+                        max_size = os.stat(logFilePath).st_size
                         continue
-                    #  remove the file if there is already another file exist with the same size
-                    if logFile.endswith(".log") and os.stat(os.path.join(root, logFile)).st_size == max_size:
-                        os.remove(os.path.join(root, logFile))
-                #  remove every log file smaller than max size
+                    #  remove duplicate files
+                    if logFile.endswith(".log") and os.stat(logFilePath).st_size == max_size:
+                        os.remove(logFilePath)
+                #  remove every log file smaller than max size which doesnt contain results
                 for logFile in os.listdir(root):
-                    if logFile.endswith(".log") and os.stat(os.path.join(root, logFile)).st_size < max_size:
-                        os.remove(os.path.join(root, logFile))
+                    logFilePath = os.path.join(root, logFile)
+                    if logFile.endswith(".log") and os.stat(logFilePath).st_size < max_size and not \
+                            check_for_results(logFilePath):
+                        os.remove(logFilePath)
 
 # extract data
 for root, dirs, files in os.walk(relPathToLogs):
