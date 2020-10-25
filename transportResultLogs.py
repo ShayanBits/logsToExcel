@@ -21,6 +21,7 @@
 import os
 import glob
 import shutil
+import random
 import pandas as pd
 import re
 
@@ -37,7 +38,8 @@ output_modes = ["symmetric", "inverse", "implication"]
 
 dirname = os.path.dirname(__file__)
 dataset = "fb15k"
-relPathToLogs = "../results/" + dataset + "/models/"
+relPathToLogs = "../results/" + dataset + "/models/TransE"
+# relPathToLogs = "../results/" + dataset + "/models/TransE"
 
 logsDirectory = "../results/" + dataset + "/logs/"
 
@@ -81,10 +83,17 @@ def purify_logfiles():
     for root, dirs, files in os.walk(relPathToLogs):
         for file in files:
             logCounts = len(glob.glob1(root, "*.log"))
+            # if there is only one log file copy it to the logs directory
             if logCounts == 1:
                 for logFile in os.listdir(root):
                     logFilePath = os.path.join(root, logFile)
-                    if logFile.endswith(".log"):
+                    if logFile.endswith(".log") and not os.path.exists(logsDirectory + logFile):
+                        shutil.copy(logFilePath, logsDirectory)
+                        os.rename(logsDirectory + logFile,
+                                  logsDirectory + '/' + str(random.randrange(999999999)) + logFile)
+                        break
+                    elif logFile.endswith(".log") and os.path.exists(logsDirectory + logFile):
+                        os.rename(logsDirectory + logFile, logsDirectory + '/' + str(random.randint(0, 999999999)) + logFile)
                         shutil.copy(logFilePath, logsDirectory)
                         break
             elif logCounts > 1:
@@ -97,7 +106,13 @@ def purify_logfiles():
                     if logFile.endswith(".log") and check_for_results(logFilePath) and not is_pattern_file(logFilePath):
                         log_with_results = os.path.basename(logFilePath)
                         # check if the log is already in the logs directory
-                        if os.path.exists(logsDirectory + logFile):
+                        if not os.path.exists(logsDirectory + logFile):
+                            shutil.copy(logFilePath, logsDirectory)
+                            os.rename(logsDirectory + logFile,
+                                      logsDirectory + '/' + str(random.randrange(999999999)) + logFile)
+                            break
+                        elif os.path.exists(logsDirectory + logFile):
+                            os.rename(logsDirectory + logFile, logsDirectory + '/' + str(random.randint(0, 999999999)) + logFile)
                             shutil.copy(logFilePath, logsDirectory)
                             break
 
@@ -109,30 +124,53 @@ def purify_logfiles():
                                 os.path.basename(logFilePath) != log_with_results and not \
                                 is_pattern_file(logFilePath):
                             os.remove(logFilePath)
-                            break
+                    break
 
                 #  keep the largest log file if no log file were found with results
                 else:
+                    biggestFile = ""
+                    biggestFilePath = ""
                     for logFile in os.listdir(root):
                         logFilePath = os.path.join(root, logFile)
-                        #  find the largest file
                         if logFile.endswith(".log") and os.stat(logFilePath).st_size > max_size and not \
                                 is_pattern_file(logFilePath):
                             max_size = os.stat(logFilePath).st_size
-                            # check if the log is already in the logs directory
-                            if os.path.exists(logsDirectory + logFile):
-                                shutil.copy(logFilePath, logsDirectory)
-                                continue
-                        #  remove duplicate files
-                        if logFile.endswith(".log") and os.stat(logFilePath).st_size == max_size:
-                            os.remove(logFilePath)
+                            biggestFile = os.path.basename(logFilePath)
+                            biggestFilePath = os.path.join(root, logFile)
+
+                    if not os.path.exists(logsDirectory + biggestFilePath):
+                        shutil.copy(biggestFilePath, logsDirectory)
+                        os.rename(logsDirectory + biggestFile,
+                                  logsDirectory + str(random.randint(0, 999999999)) + biggestFile)
+                    elif os.path.exists(logsDirectory + biggestFilePath):
+                        os.rename(logsDirectory + biggestFilePath, logsDirectory + '/' + str(random.randint(0, 999999999)) + biggestFilePath)
+                        shutil.copy(biggestFilePath, logsDirectory)
+
+                    # for logFile in os.listdir(root):
+                    #     logFilePath = os.path.join(root, logFile)
+                    #     #  find the largest file
+                    #     if logFile.endswith(".log") and os.stat(logFilePath).st_size > max_size and not \
+                    #             is_pattern_file(logFilePath):
+                    #         max_size = os.stat(logFilePath).st_size
+                    #         # check if the log is already in the logs directory
+                    #         if not os.path.exists(logsDirectory + logFile):
+                    #             shutil.copy(logFilePath, logsDirectory)
+                    #             continue
+                    #     #  remove duplicate files
+                    #     if logFile.endswith(".log") and os.stat(logFilePath).st_size == max_size:
+                    #         os.remove(logFilePath)
+
+
                     #  remove every log file smaller than max size which
                     #  doesnt contain results and are not pattern based
                     # TODO: remove all pattern files except the largest one for each pattern
                     for logFile in os.listdir(root):
                         logFilePath = os.path.join(root, logFile)
-                        if logFile.endswith(".log") and os.stat(logFilePath).st_size < max_size and not \
-                                is_pattern_file(logFilePath):
+                        if logFile.endswith(".log") and os.stat(logFilePath).st_size <= max_size and not \
+                                is_pattern_file(logFilePath) and os.path.basename(logFilePath) != biggestFile:
                             os.remove(logFilePath)
+                    break
+
+            # continue
 
 purify_logfiles()
