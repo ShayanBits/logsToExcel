@@ -41,7 +41,7 @@ dataset = "fb15k"
 relPathToLogs = "../results/" + dataset + "/models/TransE"
 # relPathToLogs = "../results/" + dataset + "/models/TransE"
 
-logsDirectory = "../results/" + dataset + "/logs/"
+logsDirectory = "../results/" + dataset + "/logs/TransE/"
 
 # pathToLogs = os.path.join(dirname, relPathToLogs, '*.log')
 
