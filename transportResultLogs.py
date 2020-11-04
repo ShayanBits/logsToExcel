@@ -42,7 +42,7 @@ model = "TransE"
 relPathToLogs = "../results/" + dataset + "/models/" + model
 # relPathToLogs = "../results/" + dataset + "/models/ComplEx"
 
-logsDirectory = "../results/" + dataset + "/logs/" + model + "/"
+logsDirectory = "../results/" + dataset + "/logs/default/" + model + "/"
 
 # pathToLogs = os.path.join(dirname, relPathToLogs, '*.log')
 
@@ -98,6 +98,7 @@ def purify_logfiles():
                         shutil.copy(logFilePath, logsDirectory)
                         break
                 break
+            #     if there are multiple lpg files:
             elif logCounts > 1:
                 log_with_results = ""
                 # find the largest file loop
@@ -149,20 +150,6 @@ def purify_logfiles():
                         os.rename(logsDirectory + biggestFilePath,
                                   logsDirectory + '/' + str(random.randint(0, 999999999)) + biggestFilePath)
                         shutil.copy(biggestFilePath, logsDirectory)
-
-                    # for logFile in os.listdir(root):
-                    #     logFilePath = os.path.join(root, logFile)
-                    #     #  find the largest file
-                    #     if logFile.endswith(".log") and os.stat(logFilePath).st_size > max_size and not \
-                    #             is_pattern_file(logFilePath):
-                    #         max_size = os.stat(logFilePath).st_size
-                    #         # check if the log is already in the logs directory
-                    #         if not os.path.exists(logsDirectory + logFile):
-                    #             shutil.copy(logFilePath, logsDirectory)
-                    #             continue
-                    #     #  remove duplicate files
-                    #     if logFile.endswith(".log") and os.stat(logFilePath).st_size == max_size:
-                    #         os.remove(logFilePath)
 
                     #  remove every log file smaller than max size which
                     #  doesnt contain results and are not pattern based
