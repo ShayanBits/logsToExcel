@@ -38,15 +38,15 @@ output_modes = ["symmetric", "inverse", "implication"]
 
 dirname = os.path.dirname(__file__)
 dataset = "fb15k"
-relPathToLogs = "../results/" + dataset + "/models/TransE"
-# relPathToLogs = "../results/" + dataset + "/models/TransE"
+model = "TransE"
+relPathToLogs = "../results/" + dataset + "/models/" + model
+# relPathToLogs = "../results/" + dataset + "/models/ComplEx"
 
-logsDirectory = "../results/" + dataset + "/logs/TransE/"
+logsDirectory = "../results/" + dataset + "/logs/" + model + "/"
 
 # pathToLogs = os.path.join(dirname, relPathToLogs, '*.log')
 
 relPathToExcel = os.path.join(dirname, "results-" + dataset + "-")
-
 
 
 def check_for_results(filename):
@@ -93,9 +93,11 @@ def purify_logfiles():
                                   logsDirectory + '/' + str(random.randrange(999999999)) + logFile)
                         break
                     elif logFile.endswith(".log") and os.path.exists(logsDirectory + logFile):
-                        os.rename(logsDirectory + logFile, logsDirectory + '/' + str(random.randint(0, 999999999)) + logFile)
+                        os.rename(logsDirectory + logFile,
+                                  logsDirectory + '/' + str(random.randint(0, 999999999)) + logFile)
                         shutil.copy(logFilePath, logsDirectory)
                         break
+                break
             elif logCounts > 1:
                 log_with_results = ""
                 # find the largest file loop
@@ -112,7 +114,8 @@ def purify_logfiles():
                                       logsDirectory + '/' + str(random.randrange(999999999)) + logFile)
                             break
                         elif os.path.exists(logsDirectory + logFile):
-                            os.rename(logsDirectory + logFile, logsDirectory + '/' + str(random.randint(0, 999999999)) + logFile)
+                            os.rename(logsDirectory + logFile,
+                                      logsDirectory + '/' + str(random.randint(0, 999999999)) + logFile)
                             shutil.copy(logFilePath, logsDirectory)
                             break
 
@@ -143,7 +146,8 @@ def purify_logfiles():
                         os.rename(logsDirectory + biggestFile,
                                   logsDirectory + str(random.randint(0, 999999999)) + biggestFile)
                     elif os.path.exists(logsDirectory + biggestFilePath):
-                        os.rename(logsDirectory + biggestFilePath, logsDirectory + '/' + str(random.randint(0, 999999999)) + biggestFilePath)
+                        os.rename(logsDirectory + biggestFilePath,
+                                  logsDirectory + '/' + str(random.randint(0, 999999999)) + biggestFilePath)
                         shutil.copy(biggestFilePath, logsDirectory)
 
                     # for logFile in os.listdir(root):
@@ -160,7 +164,6 @@ def purify_logfiles():
                     #     if logFile.endswith(".log") and os.stat(logFilePath).st_size == max_size:
                     #         os.remove(logFilePath)
 
-
                     #  remove every log file smaller than max size which
                     #  doesnt contain results and are not pattern based
                     # TODO: remove all pattern files except the largest one for each pattern
@@ -172,5 +175,6 @@ def purify_logfiles():
                     break
 
             # continue
+
 
 purify_logfiles()
