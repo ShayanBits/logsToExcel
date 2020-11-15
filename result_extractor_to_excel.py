@@ -31,13 +31,14 @@ extract_pattern_information = ["file name", "#entity", "#relation", "#train",
 
 special_information = ["MRR", "MR", "HITS@1", "HITS@3", "HITS@10"]
 
-output_modes = ["symmetric", "inverse", "implication"]
 
 dirname = os.path.dirname(__file__)
 dataset = "wn18rr"
-relPathToLogs = "../results/" + dataset + "/logs"
+patterns = ["symmetric", "inverse", "implication", "one_to_many"]
+# patterns = ["implication", "symmetric", "inverse"]
 
-relPathToExcel = os.path.join(dirname + "/../results/" + dataset + "/excel/", "results-" + dataset + "-")
+
+# patterns = ["symmetric"]
 
 
 def saveResultAsExcel(dataFrame, outputMode):
@@ -64,7 +65,7 @@ def get_main_key_values(filename):
     with open(os.path.join(filename), 'r') as logFile:
         keyValue = {"file name": os.path.basename(logFile.name)}
         logFile = logFile.readlines()
-        outputMode = mark_output(logFile)
+        # outputMode = mark_output(logFile)
         # if its default result, keep key values as is and only update hit@10
         skip_second_gamma = False
         for line in logFile:
@@ -86,36 +87,8 @@ def get_main_key_values(filename):
                             value = re.search(rf"{phrase}: ?.*", line)
                         if value is not None:
                             keyValue[phrase] = value.group()[phrase.__len__() + 2:]
-    return keyValue, outputMode
-
-
-def get_pattern_key_values(filename, keyValue):
-    with open(os.path.join(filename), 'r') as logFile:
-        keyValue["file name"] = os.path.basename(logFile.name)
-        logFile = logFile.readlines()
-        outputMode = mark_output(logFile)
-        # if its default result, keep key values as is and only update hit@10
-        skip_second_gamma = False
-        for line in logFile:
-            for phrase in extract_pattern_information:
-                if phrase in line:
-                    if phrase in extract_pattern_information:
-                        if phrase == 'HITS@1' and "HITS@10" in line:
-                            continue
-                        else:
-                            value = re.search(r": \d*\.?\d+", line)
-                        if value is not None:
-                            keyValue[phrase] = value.group()[2:]
-                    else:
-                        # REMOVE NEXT LINE  WHENEVER YOU GET RID OF SECOND GAMMA IN LOGS
-                        if phrase == 'gamma' and skip_second_gamma is False:
-                            skip_second_gamma = True
-                            value = re.search(rf"{phrase}: ?.*", line)
-                        elif phrase != 'gamma':
-                            value = re.search(rf"{phrase}: ?.*", line)
-                        if value is not None:
-                            keyValue[phrase] = value.group()[phrase.__len__() + 2:]
-    return keyValue, outputMode
+    # return keyValue, outputMode
+    return keyValue
 
 
 def updateExcelFile(keyValue, outputMode):
@@ -123,18 +96,16 @@ def updateExcelFile(keyValue, outputMode):
     saveResultAsExcel(updatedDataFrame, outputMode)
 
 
-def mark_output(logFile):
-    for line in logFile:
-        for phrase in output_modes:
-            if phrase in line:
-                return phrase
-    return 'default'
-
-
 # extract data
-for root, dirs, files in os.walk(relPathToLogs):
-    for file in files:
-        # extract key values
-        keyValue, outputMode = get_main_key_values(os.path.join(root, file))
-        updatedDataFrame = appendRow(keyValue, outputMode)
-        saveResultAsExcel(updatedDataFrame, outputMode)
+for pattern in patterns:
+    if pattern == "default":
+        relPathToLogs = "../results/" + dataset + "/logs/" + pattern
+    else:
+        relPathToLogs = "../results/" + dataset + "/logs/pattern/" + pattern
+    relPathToExcel = os.path.join(dirname + "/../results/" + dataset + "/excel/", "results-" + dataset + "-")
+    for root, dirs, files in os.walk(relPathToLogs):
+        for file in files:
+            # extract key values
+            keyValue = get_main_key_values(os.path.join(root, file))
+            updatedDataFrame = appendRow(keyValue, pattern)
+            saveResultAsExcel(updatedDataFrame, pattern)

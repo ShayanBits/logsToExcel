@@ -25,6 +25,12 @@ import random
 import pandas as pd
 import re
 
+inverse = True
+implication = False
+symmetric = False
+one_to_many = False
+reflexive = False
+
 extract_information = ["file name", "Model", "Data Path", "#entity", "#relation", "#train",
                        "#valid", "opt", "#test", "batch size", "learning rate", "gamma",
                        "hidden dimension", "negative sample size", "adversarial_temperature",
@@ -33,26 +39,29 @@ extract_pattern_information = ["file name", "#entity", "#relation", "#train",
                                "#valid", "#test", "MRR", "MR", "HITS@1", "HITS@3", "HITS@10"]
 
 special_information = ["MRR", "MR", "HITS@1", "HITS@3", "HITS@10"]
+not_valid_log = ["Evaluating on Test Dataset...", "#test: 14012", "using non inverse negative samples"]
 
-output_modes = ["symmetric", "inverse", "implication"]
+patterns = ["symmetric", "inverse", "implication", "one_to_many"]
 
 dirname = os.path.dirname(__file__)
-dataset = "fb15k"
-model = "TransE"
-relPathToLogs = "../results/" + dataset + "/models/" + model
-# relPathToLogs = "../results/" + dataset + "/models/ComplEx"
+dataset = "wn18rr"
+models = ["TransE", "RotatE", "ComplEx", "QuatE", "DistMult"]
+# models = ["TransE", "RotatE", "ComplEx", "QuatE", "DistMult"]
 
-logsDirectory = "../results/" + dataset + "/logs/default/" + model + "/"
 
-# pathToLogs = os.path.join(dirname, relPathToLogs, '*.log')
+# models = ["ComplEx"]
 
-relPathToExcel = os.path.join(dirname, "results-" + dataset + "-")
+
+# relPathToLogs = "../results/" + "test" + "/models/"
 
 
 def check_for_results(filename):
     with open(os.path.join(filename), 'r') as logFile:
         logFile = logFile.readlines()
         for line in logFile:
+            for not_valid_phrase in not_valid_log:
+                if not_valid_phrase in line:
+                    return False
             for phrase in extract_information:
                 if phrase in line:
                     if phrase in special_information:
@@ -61,30 +70,25 @@ def check_for_results(filename):
         return False
 
 
-def mark_output(logFile):
-    for line in logFile:
-        for phrase in output_modes:
-            if phrase in line:
-                return phrase
-    return 'default'
-
-
-def is_pattern_file(filename):
+def is_pattern_file(filename, pattern):
     with open(os.path.join(filename), 'r') as logFile:
         logFile = logFile.readlines()
         for line in logFile:
-            for phrase in output_modes:
-                if phrase in line:
-                    return phrase
+            if pattern in line:
+                return True
         return False
 
 
-def purify_logfiles():
+def purify_logfiles(pattern, model):
+    relPathToLogs = "../results/" + dataset + "/models/" + model
+    logsDirectory = "../results/" + dataset + "/logs/" + "pattern/" + pattern + "/" + model + "/"
+
     for root, dirs, files in os.walk(relPathToLogs):
         for file in files:
             logCounts = len(glob.glob1(root, "*.log"))
+            logFilePath = os.path.join(root, file)
             # if there is only one log file copy it to the logs directory
-            if logCounts == 1:
+            if logCounts == 1 and is_pattern_file(logFilePath, pattern):
                 for logFile in os.listdir(root):
                     logFilePath = os.path.join(root, logFile)
                     if logFile.endswith(".log") and not os.path.exists(logsDirectory + logFile):
@@ -106,7 +110,8 @@ def purify_logfiles():
                 #  find the log file with results and save the name
                 for logFile in os.listdir(root):
                     logFilePath = os.path.join(root, logFile)
-                    if logFile.endswith(".log") and check_for_results(logFilePath) and not is_pattern_file(logFilePath):
+                    if logFile.endswith(".log") and check_for_results(logFilePath) and is_pattern_file(logFilePath,
+                                                                                                       pattern):
                         log_with_results = os.path.basename(logFilePath)
                         # check if the log is already in the logs directory
                         if not os.path.exists(logsDirectory + logFile):
@@ -125,8 +130,8 @@ def purify_logfiles():
                     for logFile in os.listdir(root):
                         logFilePath = os.path.join(root, logFile)
                         if logFile.endswith(".log") and \
-                                os.path.basename(logFilePath) != log_with_results and not \
-                                is_pattern_file(logFilePath):
+                                os.path.basename(logFilePath) != log_with_results and \
+                                is_pattern_file(logFilePath, pattern):
                             os.remove(logFilePath)
                     break
 
@@ -136,8 +141,8 @@ def purify_logfiles():
                     biggestFilePath = ""
                     for logFile in os.listdir(root):
                         logFilePath = os.path.join(root, logFile)
-                        if logFile.endswith(".log") and os.stat(logFilePath).st_size > max_size and not \
-                                is_pattern_file(logFilePath):
+                        if logFile.endswith(".log") and os.stat(logFilePath).st_size > max_size and \
+                                is_pattern_file(logFilePath, pattern):
                             max_size = os.stat(logFilePath).st_size
                             biggestFile = os.path.basename(logFilePath)
                             biggestFilePath = os.path.join(root, logFile)
@@ -156,12 +161,14 @@ def purify_logfiles():
                     # TODO: remove all pattern files except the largest one for each pattern
                     for logFile in os.listdir(root):
                         logFilePath = os.path.join(root, logFile)
-                        if logFile.endswith(".log") and os.stat(logFilePath).st_size <= max_size and not \
-                                is_pattern_file(logFilePath) and os.path.basename(logFilePath) != biggestFile:
+                        if logFile.endswith(".log") and os.stat(logFilePath).st_size <= max_size and \
+                                is_pattern_file(logFilePath, pattern) and os.path.basename(logFilePath) != biggestFile:
                             os.remove(logFilePath)
                     break
 
             # continue
 
 
-purify_logfiles()
+for model in models:
+    for pattern in patterns:
+        purify_logfiles(pattern, model)
